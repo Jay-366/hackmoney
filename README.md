@@ -47,15 +47,24 @@ The system calculates a **Total Risk Score ($R_{total}$)** for every swap using 
 
 #### **Metric A: Price Impact ($I$)**
 Measures the mechanical slippage caused by the trade relative to the pool size.
-$$ I = \frac{|P_{after} - P_{before}|}{P_{before}} $$
+
+$$
+I = \frac{|P_{after} - P_{before}|}{P_{before}}
+$$
 
 #### **Metric B: Liquidity Stress ($S$)**
 Measures how much of the "active" liquidity ($L$) is being exhausted by the trade volume ($\Delta x$).
-$$ S = \frac{\Delta x}{L_{active}} $$
+
+$$
+S = \frac{\Delta x}{L_{active}}
+$$
 
 #### **Metric C: Reversibility Coefficient ($\rho$)**
 Used for post-trade verification (The "Markout" test).
-$$ \rho = \frac{|P_{t+10} - P_{t}|}{|P_{t} - P_{before}|} $$
+
+$$
+\rho = \frac{|P_{t+10} - P_{t}|}{|P_{t} - P_{before}|}
+$$
 
 *   **Low $\rho$ ($\approx 0$):** Price never returned. This proves **Toxic Flow** (Informed Arb).
 *   **High $\rho$ ($\approx 1$):** Price returned to equilibrium. This was **Noise Flow** (Retail).
