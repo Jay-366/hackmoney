@@ -49,3 +49,25 @@ export function getPoolManagerAddress(chainId: number): string | undefined {
 
     return undefined;
 }
+
+export function getPoolRegistryAddress(chainId: number): string | undefined {
+    // For Anvil, we assume a local registry might be deployed or env var Set
+    if (chainId === ANVIL_CHAIN_ID) {
+        return process.env.NEXT_PUBLIC_POOL_REGISTRY;
+    }
+    if (chainId === SEPOLIA_CHAIN_ID) {
+        // Use default provided by user if env not set
+        return process.env.NEXT_PUBLIC_POOL_REGISTRY || "0xF995fB0554d39fDe02868470bFD2E2E2e9A043e1";
+    }
+    return undefined;
+}
+
+export function getPermit2Address(chainId: number): string | undefined {
+    if (chainId === ANVIL_CHAIN_ID) {
+        return process.env.NEXT_PUBLIC_V4_PERMIT2;
+    }
+    if (chainId === SEPOLIA_CHAIN_ID) {
+        return "0x000000000022D473030F116dDEE9F6B43aC78BA3";
+    }
+    return undefined;
+}

@@ -257,8 +257,13 @@ export default function Home() {
           </div>
         </div>
 
+        <div className="flex w-full justify-center">
+          <a href="/pools" className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
+            &rarr; Go to Pools Registry & Liquidity
+          </a>
+        </div>
         {/* Footer / Links */}
-        <div className="mt-12 flex flex-col gap-4 text-base font-medium sm:flex-row w-full justify-center opacity-50 hover:opacity-100 transition-opacity">
+        <div className="mt-6 flex flex-col gap-4 text-base font-medium sm:flex-row w-full justify-center opacity-50 hover:opacity-100 transition-opacity">
           <a
             className="flex h-12 items-center justify-center gap-2 rounded-full px-5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
             href="https://Uniswap.org"
