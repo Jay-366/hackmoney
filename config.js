@@ -8,6 +8,8 @@ import {
     optimism,
     polygon,
     sepolia,
+    baseSepolia,
+    anvil,
 } from 'wagmi/chains';
 
 export const config = getDefaultConfig({
@@ -19,7 +21,9 @@ export const config = getDefaultConfig({
         optimism,
         arbitrum,
         base,
-        ...(process.env.NEXT_PUBLIC_ENABLE_TESTNETS === 'true' ? [sepolia] : []),
+        sepolia,
+        baseSepolia,
+        anvil,
     ],
     ssr: true,
 });
