@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAccount, useChainId, usePublicClient, useWriteContract } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { getPoolRegistryAddress, getPoolManagerAddress, ANVIL_CHAIN_ID, SEPOLIA_CHAIN_ID } from "@/lib/uniswapV4Addresses";
+import { getPoolRegistryAddress, getPoolManagerAddress, getPriceImpactHookAddress, ANVIL_CHAIN_ID, SEPOLIA_CHAIN_ID } from "@/lib/uniswapV4Addresses";
 import { POOL_REGISTRY_ABI } from "@/lib/poolRegistryAbi";
 import { POOL_MANAGER_ABI } from "@/lib/poolManagerAbi";
 import { sortTokens } from "@/lib/sortTokens";
@@ -23,6 +23,7 @@ export default function InitializePoolPage() {
     const [fee, setFee] = useState("3000"); // Pips
     const [tickSpacing, setTickSpacing] = useState("60");
     const [startingPriceX96, setStartingPriceX96] = useState("79228162514264337593543950336"); // 1:1
+    const [hookAddress, setHookAddress] = useState(zeroAddress);
 
     const [status, setStatus] = useState("");
     const [txHash, setTxHash] = useState("");
@@ -40,6 +41,10 @@ export default function InitializePoolPage() {
         } else if (chainId === SEPOLIA_CHAIN_ID) {
             setTokenA(NATIVE_TOKEN_TAG); // ETH default for A
             setTokenB('0xe6ba97E2d85B1d0474AAbDd0969C0C4670377d0E');
+
+            // Set default hook
+            const defaultHook = getPriceImpactHookAddress(chainId);
+            if (defaultHook) setHookAddress(defaultHook);
         }
     }, [chainId, tokenA, tokenB]);
 
@@ -61,6 +66,7 @@ export default function InitializePoolPage() {
 
             if (!isNativeA && !isAddress(tokenA)) throw new Error("Invalid Token A Address");
             if (!isNativeB && !isAddress(tokenB)) throw new Error("Invalid Token B Address");
+            if (!isAddress(hookAddress)) throw new Error("Invalid Hook Address");
 
             // Sort
             const [c0, c1] = sortTokens(
@@ -74,7 +80,7 @@ export default function InitializePoolPage() {
                 currency1: c1,
                 fee: parseInt(fee),
                 tickSpacing: parseInt(tickSpacing),
-                hooks: "0x0000000000000000000000000000000000000000"
+                hooks: hookAddress
             };
 
             // 1. Initialize
@@ -152,6 +158,10 @@ export default function InitializePoolPage() {
                     <div>
                         <label className="block text-xs font-medium mb-1 text-zinc-500">Start Price X96</label>
                         <input value={startingPriceX96} onChange={e => setStartingPriceX96(e.target.value)} className="w-full p-2 bg-zinc-100 dark:bg-zinc-800 rounded text-sm" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium mb-1 text-zinc-500">Hook Address</label>
+                        <input value={hookAddress} onChange={e => setHookAddress(e.target.value)} className="w-full p-2 bg-zinc-100 dark:bg-zinc-800 rounded text-sm font-mono" />
                     </div>
                 </div>
 

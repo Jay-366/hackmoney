@@ -3,17 +3,17 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Script.sol";
 
-import {Hooks} from "v4-core/libraries/Hooks.sol";
-import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
-
+import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
+import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {HookMiner} from "v4-periphery/src/utils/HookMiner.sol";
+
 
 import {PriceImpactHook} from "../src/PriceImpactHook.sol";
 
 contract DeployPriceImpactHook is Script {
     // Uniswap v4 PoolManager on Ethereum Sepolia
     address constant POOL_MANAGER =
-        0x00b036b58a818b1bc34d502d3fe730db729e62ac;
+        0x00B036B58a818B1BC34d502D3fE730Db729e62AC;
 
     // EIP-2470 CREATE2 deployer (used by Uniswap docs)
     address constant CREATE2_DEPLOYER =

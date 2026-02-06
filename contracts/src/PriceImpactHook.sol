@@ -1,20 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-/*//////////////////////////////////////////////////////////////
-                            IMPORTS
-//////////////////////////////////////////////////////////////*/
+import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import {BaseHook} from "v4-periphery/src/utils/BaseHook.sol";
+import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
 
-import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
-import {Hooks} from "v4-core/libraries/Hooks.sol";
-import {BaseHook} from "v4-periphery/src/base/hooks/BaseHook.sol";
+import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
+import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
+import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
+import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import {SwapParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
 
+import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
 
-/*//////////////////////////////////////////////////////////////
-                        PRICE IMPACT HOOK
-//////////////////////////////////////////////////////////////*/
-
+/// @notice Metric A only: override fee based on estimated price impact.
+/// - beforeSwap: estimate impact => choose fee
+/// - afterSwap: compute realized impact (sqrt price movement) => emit event
 contract PriceImpactHook is BaseHook {
+    using StateLibrary for IPoolManager;
+    using PoolIdLibrary for PoolKey;
+
     /*//////////////////////////////////////////////////////////////
                                 CONFIG
     //////////////////////////////////////////////////////////////*/
@@ -30,8 +36,11 @@ contract PriceImpactHook is BaseHook {
     uint24 public constant FEE_HIGH     = 150;
     uint24 public constant FEE_TOXIC    = 200;
 
-    // Estimation scaling constant
+    // Estimation scaling constant:
+    // impactEstBps ~= amountAbs * ESTIMATION_K / liquidity
     uint256 public constant ESTIMATION_K = 1e4;
+
+    constructor(IPoolManager _poolManager) BaseHook(_poolManager) {}
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -39,7 +48,6 @@ contract PriceImpactHook is BaseHook {
 
     struct SwapSnapshot {
         uint160 sqrtPriceBefore;
-        uint32  blockNumber;
         address trader;
     }
 
@@ -50,147 +58,115 @@ contract PriceImpactHook is BaseHook {
                                 EVENTS
     //////////////////////////////////////////////////////////////*/
 
-    event ImpactEstimated(
-        bytes32 indexed poolId,
-        address indexed trader,
-        uint16 impactBps,
-        uint24 feeBps
-    );
-
-    event ImpactRealized(
-        bytes32 indexed poolId,
-        address indexed trader,
-        uint16 impactBps
-    );
+    event ImpactEstimated(PoolId indexed poolId, address indexed trader, uint16 impactBps, uint24 feeBps);
+    event ImpactRealized(PoolId indexed poolId, address indexed trader, uint16 impactBps);
 
     /*//////////////////////////////////////////////////////////////
-                              CONSTRUCTOR
+                         INTERNAL HELPERS
     //////////////////////////////////////////////////////////////*/
 
-    constructor(IPoolManager _poolManager) BaseHook(_poolManager) {}
+    function _absAmount(int256 amountSpecified) internal pure returns (uint256) {
+        return amountSpecified >= 0 ? uint256(amountSpecified) : uint256(-amountSpecified);
+    }
 
-    /*//////////////////////////////////////////////////////////////
-                        HOOK PERMISSIONS
-    //////////////////////////////////////////////////////////////*/
+    function _selectFee(uint256 impactBps) internal pure returns (uint24) {
+        if (impactBps < RETAIL_MAX_BPS) return FEE_RETAIL;
+        if (impactBps < ELEVATED_MAX_BPS) return FEE_ELEVATED;
+        if (impactBps < HIGH_MAX_BPS) return FEE_HIGH;
+        return FEE_TOXIC;
+    }
 
-    function getHookPermissions()
-        public
-        pure
-        override
-        returns (Hooks.Permissions memory p)
-    {
-        p.beforeSwap = true;
-        p.afterSwap  = true;
+    function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
+        return Hooks.Permissions({
+            beforeInitialize: false,
+            afterInitialize: false,
+            beforeAddLiquidity: false,
+            afterAddLiquidity: false,
+            beforeRemoveLiquidity: false,
+            afterRemoveLiquidity: false,
+            beforeSwap: true,
+            afterSwap: true,
+            beforeDonate: false,
+            afterDonate: false,
+            beforeSwapReturnDelta: false,
+            afterSwapReturnDelta: false,
+            afterAddLiquidityReturnDelta: false,
+            afterRemoveLiquidityReturnDelta: false
+        });
     }
 
     /*//////////////////////////////////////////////////////////////
-                          BEFORE SWAP
+                          HOOK: BEFORE SWAP
     //////////////////////////////////////////////////////////////*/
 
     function _beforeSwap(
         address sender,
-        IPoolManager.PoolKey calldata key,
-        IPoolManager.SwapParams calldata params,
+        PoolKey calldata key,
+        SwapParams calldata params,
         bytes calldata /* hookData */
     )
         internal
         override
-        returns (
-            bytes4,
-            IPoolManager.BeforeSwapDelta memory,
-            uint24 lpFeeOverride
-        )
+        returns (bytes4, BeforeSwapDelta, uint24 lpFeeOverride)
     {
-        // Read pool state
-        (uint160 sqrtPriceBefore,, uint128 liquidity,,,) =
-            poolManager.getSlot0(key);
+        PoolId poolId = key.toId();
 
+        // Read sqrtPrice and liquidity via StateLibrary
+        (uint160 sqrtPriceBefore,,,) = poolManager.getSlot0(poolId);
+        uint128 liquidity = poolManager.getLiquidity(poolId);
         require(liquidity > 0, "NO_LIQUIDITY");
 
-        // Absolute input amount
-        uint256 amountIn = params.amountSpecified > 0
-            ? uint256(params.amountSpecified)
-            : uint256(-params.amountSpecified);
-
-        // Estimate impact: Δx / L_active
-        uint256 impactBps =
-            (amountIn * ESTIMATION_K) / uint256(liquidity);
-
+        // Estimate impact using |amountSpecified| / liquidity
+        uint256 amountAbs = _absAmount(params.amountSpecified);
+        uint256 impactBps = (amountAbs * ESTIMATION_K) / uint256(liquidity);
         if (impactBps > 10_000) impactBps = 10_000;
 
-        // Fee tier selection
-        if (impactBps < RETAIL_MAX_BPS) {
-            lpFeeOverride = FEE_RETAIL;
-        } else if (impactBps < ELEVATED_MAX_BPS) {
-            lpFeeOverride = FEE_ELEVATED;
-        } else if (impactBps < HIGH_MAX_BPS) {
-            lpFeeOverride = FEE_HIGH;
-        } else {
-            lpFeeOverride = FEE_TOXIC;
-        }
+        lpFeeOverride = _selectFee(impactBps);
 
-        // Store snapshot for afterSwap
-        bytes32 poolId = keccak256(abi.encode(key));
-        lastSwap[poolId] = SwapSnapshot({
-            sqrtPriceBefore: sqrtPriceBefore,
-            blockNumber: uint32(block.number),
-            trader: sender
-        });
+        // Snapshot for realized impact
+        lastSwap[PoolId.unwrap(poolId)] = SwapSnapshot({sqrtPriceBefore: sqrtPriceBefore, trader: sender});
 
-        emit ImpactEstimated(
-            poolId,
-            sender,
-            uint16(impactBps),
-            lpFeeOverride
-        );
+        emit ImpactEstimated(poolId, sender, uint16(impactBps), lpFeeOverride);
 
-        return (
-            this.beforeSwap.selector,
-            IPoolManager.BeforeSwapDelta(0, 0),
-            lpFeeOverride
-        );
+        // No delta change; only fee override
+        return (BaseHook.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, lpFeeOverride);
     }
 
     /*//////////////////////////////////////////////////////////////
-                           AFTER SWAP
+                          HOOK: AFTER SWAP
     //////////////////////////////////////////////////////////////*/
 
     function _afterSwap(
-        address,
-        IPoolManager.PoolKey calldata key,
-        IPoolManager.SwapParams calldata,
-        IPoolManager.BalanceDelta calldata,
-        bytes calldata
+        address /* sender */,
+        PoolKey calldata key,
+        SwapParams calldata /* params */,
+        BalanceDelta /* delta */,
+        bytes calldata /* hookData */
     )
         internal
         override
         returns (bytes4, int128)
     {
-        bytes32 poolId = keccak256(abi.encode(key));
-        SwapSnapshot memory snap = lastSwap[poolId];
+        PoolId poolId = key.toId();
+        SwapSnapshot memory snap = lastSwap[PoolId.unwrap(poolId)];
 
         if (snap.sqrtPriceBefore == 0) {
-            return (this.afterSwap.selector, 0);
+            return (BaseHook.afterSwap.selector, 0);
         }
 
-        (uint160 sqrtPriceAfter,,,,,) =
-            poolManager.getSlot0(key);
+        (uint160 sqrtPriceAfter,,,) = poolManager.getSlot0(poolId);
 
         uint256 diff = sqrtPriceAfter > snap.sqrtPriceBefore
-            ? sqrtPriceAfter - snap.sqrtPriceBefore
-            : snap.sqrtPriceBefore - sqrtPriceAfter;
+            ? uint256(sqrtPriceAfter - snap.sqrtPriceBefore)
+            : uint256(snap.sqrtPriceBefore - sqrtPriceAfter);
 
-        uint256 impactBps =
-            (diff * 10_000) / snap.sqrtPriceBefore;
-
+        // realized impact in sqrt-price space (bps)
+        uint256 impactBps = (diff * 10_000) / uint256(snap.sqrtPriceBefore);
         if (impactBps > 10_000) impactBps = 10_000;
 
-        emit ImpactRealized(
-            poolId,
-            snap.trader,
-            uint16(impactBps)
-        );
+        emit ImpactRealized(poolId, snap.trader, uint16(impactBps));
 
-        return (this.afterSwap.selector, 0);
+        // no hook delta
+        return (BaseHook.afterSwap.selector, 0);
     }
 }
