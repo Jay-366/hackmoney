@@ -81,8 +81,8 @@ export default function Register() {
 
 
             {/* Main Content */}
-            <main className="relative z-10 pt-40 pb-20 max-w-3xl mx-auto px-6">
-                <header className="mb-20 text-center">
+            <main className="relative z-10 pt-32 pb-20 max-w-3xl mx-auto px-6">
+                <header className="mb-10 text-center">
                     <h1 className="font-serif text-7xl italic font-light tracking-tight mb-8 opacity-90 text-white">
                         Agent Lists
                     </h1>
