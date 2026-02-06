@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { BottomNavBar } from '@/components/ui/bottom-nav-bar';
+import { LayoutDashboard, Users, LineChart, Settings, Home } from 'lucide-react';
 
 export default function Register() {
     const [agents, setAgents] = useState([
@@ -38,24 +40,22 @@ export default function Register() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950">
             {/* Header */}
-            <header className="border-b border-slate-200/50 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl sticky top-0 z-50">
+            <header className="sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-center h-16">
+                    <div className="flex items-center justify-center">
                         {/* Pill Navigation */}
-                        <nav className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/50 p-1.5 rounded-full">
-                            <a href="#" className="px-5 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 rounded-full transition-all">
-                                Dashboard
-                            </a>
-                            <a href="#" className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-full shadow-md transition-all">
-                                Agent Lists
-                            </a>
-                            <a href="#" className="px-5 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 rounded-full transition-all">
-                                Analytics
-                            </a>
-                            <a href="#" className="px-5 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 rounded-full transition-all">
-                                Settings
-                            </a>
-                        </nav>
+                        <BottomNavBar
+                            items={[
+                                { label: "Home", icon: Home },
+                                { label: "Dashboard", icon: LayoutDashboard },
+                                { label: "Agent Lists", icon: Users },
+                                { label: "Analytics", icon: LineChart },
+                                { label: "Settings", icon: Settings },
+                            ]}
+                            defaultIndex={1}
+                            stickyBottom={false}
+                            className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-sm text-sm mt-6"
+                        />
                     </div>
                 </div>
             </header>
