@@ -1,23 +1,20 @@
 "use client";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import {
   Home,
   LineChart,
-  CreditCard,
-  MessageCircle,
-  Trophy,
-  User,
+  LayoutDashboard,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { label: "Home", icon: Home }, // Added first "Home" link as requested
-  { label: "Portfolio", icon: LineChart },
-  { label: "Transactions", icon: CreditCard },
-  { label: "Messages", icon: MessageCircle },
-  { label: "Rewards", icon: Trophy },
-  { label: "Profile", icon: User },
+  { label: "Home", icon: Home, href: "/" },
+  { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+  { label: "Agents", icon: Users, href: "/register" },
+  { label: "Analytics", icon: LineChart, href: "/analytics" },
 ];
 
 const MOBILE_LABEL_WIDTH = 72;
@@ -47,16 +44,15 @@ export function BottomNavBar({
         const isHovered = hoveredIndex === idx;
 
         return (
-          <button
+          <Link
             key={`${item.label}-${idx}`}
+            href={item.href || "#"}
             onMouseEnter={() => setHoveredIndex(idx)}
             onMouseLeave={() => setHoveredIndex(null)}
-            onClick={() => setActiveIndex(idx)}
             className={cn(
               "relative flex items-center px-4 py-2 rounded-full transition-colors duration-300 focus:outline-none",
               isActive ? "text-primary dark:text-primary-foreground" : "text-muted-foreground hover:text-foreground"
             )}
-            type="button"
           >
             {/* Sliding Active Background */}
             {isActive && (
@@ -101,7 +97,7 @@ export function BottomNavBar({
                 </span>
               </motion.div>
             </div>
-          </button>
+          </Link>
         );
       })}
     </motion.nav>
