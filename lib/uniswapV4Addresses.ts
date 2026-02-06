@@ -81,3 +81,13 @@ export function getStateViewAddress(chainId: number): string | undefined {
     }
     return undefined;
 }
+
+export function getUniversalRouterAddress(chainId: number): string | undefined {
+    if (chainId === ANVIL_CHAIN_ID) {
+        return process.env.NEXT_PUBLIC_V4_SWAP_ROUTER;
+    }
+    if (chainId === SEPOLIA_CHAIN_ID) {
+        return "0x3A9D48AB9751398BbFa63ad67599Bb04e4BdF98b";
+    }
+    return undefined;
+}
