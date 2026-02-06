@@ -1,0 +1,30 @@
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "id": "6d26c602-c8b3-4675-b845-12ad10906420",
+    "contextId": "511696ce-5a1b-4a4a-acec-b9e9b7266d85",
+    "status": "completed",
+    "messages": [
+      {
+        "role": "user",
+        "parts": [
+          {
+            "type": "text",
+            "text": "Please transfer 0.0001 ETH to 0xcFcF607971ad68AE5E0FBCea64d129449adf7Cd1"
+          }
+        ]
+      },
+      {
+        "role": "agent",
+        "parts": [
+          {
+            "type": "text",
+            "text": "The transaction to transfer 0.0001 ETH to the address **0xcFcF607971ad68AE5E0FBCea64d129449adf7Cd1** was successful! \n\nYou can view the transaction details [here on Etherscan](https://sepolia.etherscan.io/tx/0x1b1e446a0b4e89cf4c12a1cba85f54958240c6e9369cc8f6990f9b2889b7a41f)."
+          }
+        ]
+      }
+    ],
+    "artifacts": []
+  },
+  "id": 1
+}
