@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@zerodev/ecdsa-validator": "^5.4.9",
+    "@zerodev/permissions": "^5.6.3",
     "@zerodev/sdk": "^5.5.7",
+    "axios": "^1.13.4",
     "dotenv": "^17.2.3",
     "next": "16.1.6",
     "permissionless": "^0.3.4",
@@ -19,9 +21,9 @@
     "viem": "^2.45.1"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "eslint": "^9",
+    "@tailwindcss/postcss": "^4.1.18",
+    "eslint": "^9.39.2",
     "eslint-config-next": "16.1.6",
-    "tailwindcss": "^4"
+    "tailwindcss": "^4.1.18"
   }
 }
