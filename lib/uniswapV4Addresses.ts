@@ -71,3 +71,13 @@ export function getPermit2Address(chainId: number): string | undefined {
     }
     return undefined;
 }
+
+export function getStateViewAddress(chainId: number): string | undefined {
+    if (chainId === ANVIL_CHAIN_ID) {
+        return process.env.NEXT_PUBLIC_STATE_VIEW;
+    }
+    if (chainId === SEPOLIA_CHAIN_ID) {
+        return process.env.NEXT_PUBLIC_STATE_VIEW || "0xe1dd9c3fa50edb962e442f60dfbc432e24537e4c";
+    }
+    return undefined;
+}

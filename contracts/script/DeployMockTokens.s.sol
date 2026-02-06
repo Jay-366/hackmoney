@@ -8,11 +8,9 @@ contract DeployMockTokens is Script {
     function run() external {
         vm.startBroadcast();
 
-        MockERC20 tokenA = new MockERC20("Mock Token A", "MTKA", 1_000_000 ether);
-        MockERC20 tokenB = new MockERC20("Mock Token B", "MTKB", 1_000_000 ether);
+        MockERC20 tokenA = new MockERC20("SepoliaETH", "ETH", 1_000_000 ether);
 
-        console2.log("Mock ERC20 A deployed at:", address(tokenA));
-        console2.log("Mock ERC20 B deployed at:", address(tokenB));
+        console2.log("Mock SepoliaETH deployed at:", address(tokenA));
 
         vm.stopBroadcast();
     }

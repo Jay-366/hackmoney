@@ -137,7 +137,12 @@ export default function InitializePoolPage() {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-medium mb-1 text-zinc-500">Fee (pips)</label>
-                            <input type="number" value={fee} onChange={e => setFee(e.target.value)} className="w-full p-2 bg-zinc-100 dark:bg-zinc-800 rounded text-sm" />
+                            <select value={fee} onChange={e => setFee(e.target.value)} className="w-full p-2 bg-zinc-100 dark:bg-zinc-800 rounded text-sm">
+                                <option value="100">0.01% (100)</option>
+                                <option value="500">0.05% (500)</option>
+                                <option value="3000">0.30% (3000)</option>
+                                <option value="10000">1.00% (10000)</option>
+                            </select>
                         </div>
                         <div>
                             <label className="block text-xs font-medium mb-1 text-zinc-500">Tick Spacing</label>

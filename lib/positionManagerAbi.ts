@@ -15,5 +15,20 @@ export const POSITION_MANAGER_ABI = [
         "outputs": [{ "internalType": "bytes[]", "name": "results", "type": "bytes[]" }],
         "stateMutability": "payable",
         "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "SliceOutOfBounds",
+        "type": "error"
+    },
+    {
+        "inputs": [
+            { "internalType": "bytes", "name": "actions", "type": "bytes" },
+            { "internalType": "bytes[]", "name": "params", "type": "bytes[]" }
+        ],
+        "name": "modifyLiquiditiesWithoutUnlock",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
     }
 ] as const;

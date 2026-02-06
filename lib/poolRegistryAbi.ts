@@ -75,5 +75,25 @@ export const POOL_REGISTRY_ABI = [
         ],
         "stateMutability": "view",
         "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "components": [
+                    { "internalType": "address", "name": "currency0", "type": "address" },
+                    { "internalType": "address", "name": "currency1", "type": "address" },
+                    { "internalType": "uint24", "name": "fee", "type": "uint24" },
+                    { "internalType": "int24", "name": "tickSpacing", "type": "int24" },
+                    { "internalType": "address", "name": "hooks", "type": "address" }
+                ],
+                "internalType": "struct PoolKey",
+                "name": "key",
+                "type": "tuple"
+            }
+        ],
+        "name": "computePoolId",
+        "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
+        "stateMutability": "pure",
+        "type": "function"
     }
 ] as const;
