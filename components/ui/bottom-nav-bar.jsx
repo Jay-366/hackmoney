@@ -54,7 +54,7 @@ export function BottomNavBar({
             onClick={() => setActiveIndex(idx)}
             className={cn(
               "relative flex items-center px-4 py-2 rounded-full transition-colors duration-300 focus:outline-none",
-              isActive ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground hover:text-foreground"
+              isActive ? "text-primary dark:text-primary-foreground" : "text-muted-foreground hover:text-foreground"
             )}
             type="button"
           >
@@ -62,7 +62,7 @@ export function BottomNavBar({
             {isActive && (
               <motion.div
                 layoutId="activeBackground"
-                className="absolute inset-0 bg-blue-100 dark:bg-blue-900/30 rounded-full"
+                className="absolute inset-0 bg-primary/10 dark:bg-primary/20 rounded-full"
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
               />
             )}
