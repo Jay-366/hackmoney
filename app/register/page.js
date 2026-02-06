@@ -58,12 +58,6 @@ export default function Register() {
             <div className="fixed top-0 left-0 w-full z-50 flex justify-center py-6 pointer-events-none">
                 <div className="pointer-events-auto">
                     <BottomNavBar
-                        items={[
-                            { label: "Home", icon: Home },
-                            { label: "Dashboard", icon: LayoutDashboard },
-                            { label: "Network", icon: Users },
-                            { label: "Analytics", icon: LineChart },
-                        ]}
                         defaultIndex={2}
                         stickyBottom={false}
                         className="glass-panel text-sm !border-white/[0.08] !bg-white/[0.03]"
