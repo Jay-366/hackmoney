@@ -45,9 +45,3 @@ contracts/out/
 contracts/cache/
 contracts/broadcast/
 contracts/lib/
-
-# If you also have foundry at root (just in case)
-out/
-cache/
-broadcast/
-lib/
