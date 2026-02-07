@@ -280,7 +280,7 @@ export default function AgentsPage() {
                     <div className="flex justify-center items-center">
                         <div className="w-full max-lg h-[1px] bg-gradient-to-r from-transparent via-slate-700/40 to-transparent"></div>
                     </div>
-                    <p className="text-slate-400 mt-4 text-lg font-light font-sans-airy">
+                    <p className="text-[#fd7c9f] mt-4 text-lg font-light font-sans-airy">
                         Explore autonomous agents registered on the ERC-8004 registry
                     </p>
                 </header>
