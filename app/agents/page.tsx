@@ -256,7 +256,7 @@ export default function AgentsPage() {
                         {/* Stats & Actions */}
                         <div className="flex items-center gap-4 sm:gap-8 pt-2 flex-wrap border-t border-white/[0.04] mt-4 pt-4">
                             {/* Score Stat */}
-                            <div className="flex items-center gap-2 text-slate-500" title="Reputation Score">
+                            <div className="flex items-center gap-2 text-slate-200/90" title="Reputation Score">
                                 <BarChart2 size={16} />
                                 <span className="text-sm font-sans-airy font-light whitespace-nowrap">
                                     Score {agent.score ? parseFloat(agent.score).toFixed(2) : '0.00'}
@@ -264,7 +264,7 @@ export default function AgentsPage() {
                             </div>
 
                             {/* Feedback Stat */}
-                            <div className="flex items-center gap-2 text-slate-500" title="Total Feedback">
+                            <div className="flex items-center gap-2 text-slate-200/90" title="Total Feedback">
                                 <Repeat size={16} />
                                 <span className="text-sm font-sans-airy font-light whitespace-nowrap">
                                     Feedback {agent.totalFeedback}
