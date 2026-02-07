@@ -29,7 +29,7 @@ export default function SortSelect({ value, onValueChange }: SortSelectProps) {
       positioning={{ sameWidth: true }}
     >
       <Select.Control>
-        <Select.Trigger className="group flex h-12 w-[180px] items-center justify-between rounded-full border border-white/[0.08] bg-[#121418]/80 backdrop-blur-xl px-4 text-sm text-slate-200 shadow-sm transition-all hover:border-[#FD7C9F]/50 focus:border-[#FD7C9F] focus:outline-none focus:ring-1 focus:ring-[#FD7C9F]">
+        <Select.Trigger className="group flex h-12 w-[180px] items-center justify-between rounded-full border border-transparent bg-[#585858] px-4 text-sm text-slate-200 shadow-sm transition-all duration-300 hover:bg-[#121418] hover:border-[#FD7C9F] hover:shadow-[0_0_20px_rgba(253,124,159,0.2)] focus:outline-none data-[state=open]:bg-[#121418] data-[state=open]:border-[#FD7C9F] data-[state=open]:shadow-[0_0_20px_rgba(253,124,159,0.2)]">
           <Select.ValueText placeholder="Sort by" />
           <Select.Indicator>
             <ChevronDownIcon className="h-4 w-4 text-slate-500 transition-transform group-data-[state=open]:rotate-180" />
