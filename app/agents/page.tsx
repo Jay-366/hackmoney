@@ -21,6 +21,7 @@ import {
     Activity
 } from 'lucide-react';
 import Link from 'next/link';
+import SortSelect, { SortOption } from '@/components/ui/sort-select';
 
 interface RegistrationFile {
     name: string | null;
@@ -60,6 +61,7 @@ export default function AgentsPage() {
     const [error, setError] = useState<string | null>(null);
     const [page, setPage] = useState(0);
     const [hasMore, setHasMore] = useState(true);
+    const [sortOption, setSortOption] = useState<SortOption[]>([]);
 
     // Search state
     const [searchId, setSearchId] = useState('');
@@ -143,6 +145,38 @@ export default function AgentsPage() {
             day: 'numeric',
         });
     };
+
+    const getSortedAgents = useCallback(() => {
+        if (!agents.length) return [];
+        const option = sortOption[0];
+        if (!option) return agents;
+
+        return [...agents].sort((a, b) => {
+            switch (option) {
+                case "ens-asc":
+                    // Prioritize those with ENS, then alphabetic
+                    if (a.registrationFile?.ens && !b.registrationFile?.ens) return -1;
+                    if (!a.registrationFile?.ens && b.registrationFile?.ens) return 1;
+                    return (a.registrationFile?.ens || "").localeCompare(b.registrationFile?.ens || "");
+
+                case "score-desc":
+                    return (parseFloat(b.score || "0") || 0) - (parseFloat(a.score || "0") || 0);
+
+                case "feedback-desc":
+                    return (parseInt(b.totalFeedback || "0") || 0) - (parseInt(a.totalFeedback || "0") || 0);
+
+                case "name-asc":
+                    const nameA = a.registrationFile?.name || `Agent #${a.agentId}`;
+                    const nameB = b.registrationFile?.name || `Agent #${b.agentId}`;
+                    return nameA.localeCompare(nameB);
+
+                default:
+                    return 0;
+            }
+        });
+    }, [agents, sortOption]);
+
+    const sortedAgents = getSortedAgents();
 
     // Helper to render an agent card (reused for list & search result)
     const AgentCard = ({ agent }: { agent: Agent }) => {
@@ -285,9 +319,9 @@ export default function AgentsPage() {
                     </p>
                 </header>
 
-                {/* Search Section */}
-                <div className="mb-10 relative">
-                    <form onSubmit={handleSearch} className="relative z-10 w-full max-w-md mx-auto font-sans">
+                {/* Search & Sort Section */}
+                <div className="mb-10 flex flex-col md:flex-row items-center justify-center gap-4 max-w-3xl mx-auto">
+                    <form onSubmit={handleSearch} className="relative z-10 w-full max-w-md font-sans">
                         <label className="relative flex items-center w-full h-12 px-12 z-0">
                             {/* Input */}
                             <input
@@ -322,13 +356,17 @@ export default function AgentsPage() {
                         <button type="submit" className="hidden"></button>
                     </form>
 
-                    {/* Search Error */}
-                    {searchError && (
-                        <div className="mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-200 text-center font-light">
-                            {searchError}
-                        </div>
-                    )}
+                    <div className="relative z-20">
+                        <SortSelect value={sortOption} onValueChange={(e) => setSortOption(e.value as SortOption[])} />
+                    </div>
                 </div>
+
+                {/* Search Error */}
+                {searchError && (
+                    <div className="mb-8 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-200 text-center font-light max-w-md mx-auto">
+                        {searchError}
+                    </div>
+                )}
 
                 {/* Content Area */}
                 <div className="space-y-6">
@@ -365,7 +403,7 @@ export default function AgentsPage() {
                                 </div>
                             ) : (
                                 <div className="space-y-6 animate-in fade-in duration-700">
-                                    {agents.map((agent) => (
+                                    {sortedAgents.map((agent) => (
                                         <AgentCard key={agent.agentId} agent={agent} />
                                     ))}
                                 </div>
