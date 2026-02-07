@@ -12,6 +12,7 @@ interface Agent {
     agentId: string;
     owner: string;
     agentURI: string;
+    score: string | null;
     totalFeedback: string;
     lastActivity: string;
     registrationFile: RegistrationFile | null;
@@ -186,6 +187,10 @@ export default function AgentsPage() {
                                     </p>
                                 </div>
                                 <div>
+                                    <span className="text-slate-400">Score:</span>
+                                    <p className="text-amber-400 font-semibold">{searchResult.score ? parseFloat(searchResult.score).toFixed(2) : '-'}</p>
+                                </div>
+                                <div>
                                     <span className="text-slate-400">Total Feedback:</span>
                                     <p className="text-white">{searchResult.totalFeedback}</p>
                                 </div>
@@ -229,6 +234,7 @@ export default function AgentsPage() {
                                     <th className="px-4 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">ENS</th>
                                     <th className="px-4 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Web Endpoint</th>
                                     <th className="px-4 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Agent URI</th>
+                                    <th className="px-4 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Score</th>
                                     <th className="px-4 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Feedback</th>
                                     <th className="px-4 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Last Activity</th>
                                 </tr>
@@ -236,7 +242,7 @@ export default function AgentsPage() {
                             <tbody className="divide-y divide-slate-700/50">
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={8} className="px-4 py-12 text-center">
+                                        <td colSpan={9} className="px-4 py-12 text-center">
                                             <div className="flex items-center justify-center gap-3">
                                                 <div className="w-5 h-5 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
                                                 <span className="text-slate-400">Loading agents...</span>
@@ -245,7 +251,7 @@ export default function AgentsPage() {
                                     </tr>
                                 ) : agents.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
+                                        <td colSpan={9} className="px-4 py-12 text-center text-slate-400">
                                             No agents found
                                         </td>
                                     </tr>
@@ -262,6 +268,7 @@ export default function AgentsPage() {
                                             <td className="px-4 py-4 max-w-[150px] truncate text-sm text-slate-400">
                                                 {agent.agentURI || '-'}
                                             </td>
+                                            <td className="px-4 py-4 text-amber-400 font-semibold">{agent.score ? parseFloat(agent.score).toFixed(2) : '-'}</td>
                                             <td className="px-4 py-4 text-slate-200">{agent.totalFeedback}</td>
                                             <td className="px-4 py-4 text-slate-400 text-sm">{formatTimestamp(agent.lastActivity)}</td>
                                         </tr>
