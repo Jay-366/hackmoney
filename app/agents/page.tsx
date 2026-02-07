@@ -287,36 +287,39 @@ export default function AgentsPage() {
 
                 {/* Search Section */}
                 <div className="mb-10 relative">
-                    <form onSubmit={handleSearch} className="relative z-10">
-                        <div className="relative group">
-                            <div className="absolute inset-0 bg-gradient-to-r from-[#FD7C9F]/20 to-purple-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                            <div className="glass-panel rounded-2xl flex items-center p-2 border border-white/[0.08] bg-[#121418]/80 backdrop-blur-xl relative z-10">
-                                <Search className="ml-4 text-slate-500" size={20} />
-                                <input
-                                    type="text"
-                                    value={searchId}
-                                    onChange={(e) => setSearchId(e.target.value)}
-                                    placeholder="Search by Agent ID (e.g., 123)..."
-                                    className="flex-1 bg-transparent border-none text-white placeholder-slate-500 px-4 py-3 focus:outline-none font-sans-airy text-lg"
-                                />
-                                {searchId && (
-                                    <button
-                                        type="button"
-                                        onClick={clearSearch}
-                                        className="text-slate-500 hover:text-white px-3 transition-colors text-sm uppercase tracking-wider font-bold"
-                                    >
-                                        Clear
-                                    </button>
-                                )}
-                                <button
-                                    type="submit"
-                                    disabled={searching || !searchId.trim()}
-                                    className="luminous-accent text-white px-6 py-2.5 rounded-xl font-medium transition-all hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ml-2"
-                                >
-                                    {searching ? '...' : 'Find'}
-                                </button>
+                    <form onSubmit={handleSearch} className="relative z-10 w-full max-w-md mx-auto font-sans">
+                        <label className="relative flex items-center w-full h-12 px-12 z-0">
+                            {/* Input */}
+                            <input
+                                className="peer w-full h-full bg-transparent border-none outline-none text-slate-200 placeholder-white/90 font-sans-airy text-sm z-10"
+                                type="text"
+                                value={searchId}
+                                onChange={(e) => setSearchId(e.target.value)}
+                                placeholder="Search by Agent ID..."
+                                required
+                            />
+
+                            {/* Fancy Background (border/bg change on focus) */}
+                            <div className="absolute inset-0 w-full h-full bg-[#585858] rounded-full -z-10 shadow-sm transition-all duration-300 peer-focus:bg-[#121418] peer-focus:border peer-focus:border-[#FD7C9F] peer-focus:shadow-[0_0_20px_rgba(253,124,159,0.2)]"></div>
+
+                            {/* Search Icon (Left) */}
+                            <div className="absolute left-4 text-slate-500 transition-colors duration-300 peer-focus:text-[#FD7C9F] z-10">
+                                <Search size={18} />
                             </div>
-                        </div>
+
+                            {/* Close/Clear Button (Right) */}
+                            <button
+                                type="button"
+                                onClick={clearSearch}
+                                className={`absolute right-4 w-5 h-5 rounded-full bg-[#FD7C9F] text-[#121418] flex items-center justify-center transition-all duration-300 z-10 ${searchId ? 'opacity-100 visible scale-100' : 'opacity-0 invisible scale-90'}`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                </svg>
+                            </button>
+                        </label>
+                        {/* Hidden submit button to allow Enter key submission */}
+                        <button type="submit" className="hidden"></button>
                     </form>
 
                     {/* Search Error */}
