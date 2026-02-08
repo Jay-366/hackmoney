@@ -111,10 +111,4 @@ Using **Circom**, we prove compliance without leaking alpha:
 
 ---
 
-## 🚀 Getting Started (Sepolia)
 
-### 1. Install Dependencies
-
-Ensure you have [Foundry](https://github.com/foundry-rs/foundry) installed.
-
-```bash
