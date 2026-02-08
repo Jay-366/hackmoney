@@ -107,7 +107,7 @@ Using **Circom**, we prove compliance without leaking alpha:
 
 ## 🧩 Architechture Diagram
 
-<img width="1920" height="1080" alt="Black And White Space Bold Pitch Deck Presentation (1)" src="https://github.com/user-attachments/assets/cbeca609-ef28-4a51-9a0b-3a283012b180" />
+<img width="1920" height="1080" alt="Black And White Space Bold Pitch Deck Presentation (2)" src="https://github.com/user-attachments/assets/27ceb07e-0f16-407b-b998-485c6dfbaee9" />
 
 ---
 
