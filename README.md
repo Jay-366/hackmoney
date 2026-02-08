@@ -1,4 +1,4 @@
-# Bonded-Risk Execution for Uniswap v4
+# AMINOHOOKS using Uniswap v4
 
 ![Status](https://img.shields.io/badge/Status-Development-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -105,9 +105,9 @@ Using **Circom**, we prove compliance without leaking alpha:
 
 ---
 
-## Architechture Diagram
+## 🧩 Architechture Diagram
 
-<img width="1920" height="1080" alt="Black And White Space Bold Pitch Deck Presentation" src="https://github.com/user-attachments/assets/6f262648-7bd1-4a04-82ac-d8c08003de31" />
+<img width="1920" height="1080" alt="Black And White Space Bold Pitch Deck Presentation (1)" src="https://github.com/user-attachments/assets/cbeca609-ef28-4a51-9a0b-3a283012b180" />
 
 ---
 
