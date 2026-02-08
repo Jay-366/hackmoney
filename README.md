@@ -105,6 +105,12 @@ Using **Circom**, we prove compliance without leaking alpha:
 
 ---
 
+## Architechture Diagram
+
+<img width="1920" height="1080" alt="Black And White Space Bold Pitch Deck Presentation" src="https://github.com/user-attachments/assets/6f262648-7bd1-4a04-82ac-d8c08003de31" />
+
+---
+
 ## 🚀 Getting Started (Sepolia)
 
 ### 1. Install Dependencies
