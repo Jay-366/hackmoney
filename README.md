@@ -13,7 +13,7 @@ By combining **ERC-8004 Agent Identity**, **ZK-Proof Compliance**, and **Dynamic
 
 ---
 
-## 💡 The "Why": Why did we build AminoHooks?
+## 💡 Why did we build AminoHooks?
 
 Current AMM designs treat all capital flow as equal. Whether you are a retail user swapping $50 or a sophisticated HFT bot extracting $50,000 via **Toxic Arbitrage**, the pool treats you the same.
 
