@@ -1,4 +1,4 @@
-# Bonded-Risk Execution for Uniswap v4
+# AMINOHOOKS using Uniswap v4
 
 ![Status](https://img.shields.io/badge/Status-Development-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
@@ -102,6 +102,12 @@ Using **Circom**, we prove compliance without leaking alpha:
 *   **Private Inputs:** Exact trade size, internal routing, and expected price.
 *   **Public Inputs:** Current pool `sqrtPrice`, Max Impact threshold.
 *   **Reason:** Prevents "Strategy Leakage" while ensuring "LP Safety."
+
+---
+
+## 🧩 Architechture Diagram
+
+<img width="1920" height="1080" alt="Black And White Space Bold Pitch Deck Presentation (2)" src="https://github.com/user-attachments/assets/27ceb07e-0f16-407b-b998-485c6dfbaee9" />
 
 ---
 
