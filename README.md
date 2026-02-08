@@ -118,3 +118,13 @@ Using **Circom**, we prove compliance without leaking alpha:
 Ensure you have [Foundry](https://github.com/foundry-rs/foundry) installed.
 
 ```bash
+
+---
+
+## 📜 Deployed Contracts (Sepolia)
+
+| Contract | Address |
+|----------|---------|
+| AminoRiskFeeHook | [0x9F6638e83F35b7DC78fDd42779BbDa7C4a1540C0](https://sepolia.etherscan.io/address/0x9F6638e83F35b7DC78fDd42779BbDa7C4a1540C0) |
+| PriceImpactHook | [0x2106773d7577c3ceb4ae2adae7a1ff11c0f800c0](https://sepolia.etherscan.io/address/0x2106773d7577c3ceb4ae2adae7a1ff11c0f800c0) |
+| PoolRegistry | [0xf995fb0554d39fde02868470bfd2e2e2e9a043e1](https://sepolia.etherscan.io/address/0xf995fb0554d39fde02868470bfd2e2e2e9a043e1) |
