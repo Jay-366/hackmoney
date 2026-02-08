@@ -1,11 +1,11 @@
-import { Token, Percent } from '@uniswap/sdk-core';
+import { Token, Percent, Currency, NativeCurrency, Ether } from '@uniswap/sdk-core';
 import { Pool, Position, V4PositionManager } from '@uniswap/v4-sdk';
 import { PublicClient } from 'viem';
 import { STATE_VIEW_ABI } from './stateViewAbi';
 import { POOL_MANAGER_ABI } from './poolManagerAbi';
 
 /**
- * Create a Token instance from address and metadata
+ * Create a Token or Native Currency instance
  */
 export function createToken(
     chainId: number,
@@ -13,7 +13,10 @@ export function createToken(
     decimals: number,
     symbol?: string,
     name?: string
-): Token {
+): Currency {
+    if (address === '0x0000000000000000000000000000000000000000') {
+        return Ether.onChain(chainId);
+    }
     return new Token(chainId, address, decimals, symbol, name);
 }
 
@@ -25,8 +28,8 @@ export async function createPoolFromChain(
     chainId: number,
     poolManagerAddress: string,
     stateViewAddress: string | undefined,
-    token0: Token,
-    token1: Token,
+    token0: Currency,
+    token1: Currency,
     fee: number,
     tickSpacing: number,
     hooks: string,
