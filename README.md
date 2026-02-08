@@ -1,11 +1,29 @@
 # AMINOHOOKS 
 
+### 🧬 The Immune System of DeFi
+
 ![Status](https://img.shields.io/badge/Status-Development-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Uniswap](https://img.shields.io/badge/Uniswap-v4-ff007a)
 ![Foundry](https://img.shields.io/badge/Built%20With-Foundry-orange)
 
-**Bonded-Risk Execution** is a next-generation liquidity protection layer that transforms Uniswap v4 from a passive AMM into an **agent-aware risk market**. By combining **ERC-8004 Agent Identity**, **ZK-Proof Compliance**, and **Dynamic Hook-based Fees**, we eliminate the "LVR Subsidy" where Liquidity Providers (LPs) lose value to toxic arbitrage and adversarial flow.
+**Bonded-Risk Execution** is a next-generation liquidity protection layer that transforms Uniswap v4 from a passive AMM into an **agent-aware risk market**.
+
+By combining **ERC-8004 Agent Identity**, **ZK-Proof Compliance**, and **Dynamic Hook-based Fees**, we eliminate the "LVR Subsidy" where Liquidity Providers (LPs) lose value to toxic arbitrage and adversarial flow.
+
+---
+
+## 💡 The "Why": Why did we build AminoHooks?
+
+Current AMM designs treat all capital flow as equal. Whether you are a retail user swapping $50 or a sophisticated HFT bot extracting $50,000 via **Toxic Arbitrage**, the pool treats you the same.
+
+This is a **fundamental market failure**. LPs are forced to subsidize the profits of the very bots that drain them. We realized that for the "Agentic Economy" to succeed on-chain, pools need an **Immune System**.
+
+AminoHooks provides the "Amino Acids"—the building blocks of trust—that allow pools to:
+
+*   🔍 **Differentiate** between "Informed/Toxic" flow and "Noise/Retail" flow.
+*   ⚖️ **Enforce** economic consequences for liquidity exhaustion.
+*   🏆 **Reward** transparency and long-term reputation without compromising trader privacy.
 
 ---
 
@@ -111,10 +129,87 @@ Using **Circom**, we prove compliance without leaking alpha:
 
 ---
 
-## 📜 Deployed Contracts (Sepolia)
+## � Getting Started
+
+### Prerequisites
+
+Make sure you have the following installed:
+
+- [Bun](https://bun.sh/) (JavaScript runtime & package manager)
+- [Foundry](https://github.com/foundry-rs/foundry) (Solidity development toolchain)
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/your-username/hackmoney.git
+cd hackmoney
+```
+
+### 2. Install Frontend Dependencies
+
+```bash
+bun install
+```
+
+### 3. Install Smart Contract Dependencies
+
+Navigate to the contracts folder and install Foundry dependencies:
+
+```bash
+cd contracts
+forge install
+```
+
+This will install the following Uniswap v4 and Foundry dependencies:
+- `forge-std` - Foundry standard library
+- `v4-core` - Uniswap v4 core contracts
+- `v4-periphery` - Uniswap v4 periphery contracts
+- `v4-template` - Uniswap v4 hook template
+
+### 4. Install Test Agent Dependencies (Optional)
+
+If you want to run the AI agent:
+
+```bash
+cd test-agent
+bun install
+```
+
+### 5. Environment Setup
+
+Copy the example environment file and fill in your keys:
+
+```bash
+cp .env.example .env
+```
+
+Required environment variables:
+```
+ZERODEV_PROJECT_ID=your_zerodev_project_id
+PRIVATE_KEY=your_private_key
+RPC_URL=your_sepolia_rpc_url
+```
+
+### 6. Run the Application
+
+**Start the Next.js frontend:**
+```bash
+bun run dev
+```
+
+**Build & test smart contracts:**
+```bash
+cd contracts
+forge build
+forge test
+```
+
+---
+
+## �📜 Deployed Contracts (Sepolia)
 
 | Contract | Address |
 |:---------|:--------|
-| **AminoRiskFeeHook** | [`0x9F6638e83F35b7DC78fDd42779BbDa7C4a1540C0`](https://sepolia.etherscan.io/address/0x9F6638e83F35b7DC78fDd42779BbDa7C4a1540C0) |
-| **PriceImpactHook** | [`0x2106773d7577c3ceb4ae2adae7a1ff11c0f800c0`](https://sepolia.etherscan.io/address/0x2106773d7577c3ceb4ae2adae7a1ff11c0f800c0) |
+| **AminoRiskFeeHook** | [`0x41B794D60e275D96ba393E301cB8b684604680C0`](https://sepolia.etherscan.io/address/0x41B794D60e275D96ba393E301cB8b684604680C0) |
+| **AminoReputationRegistry** | [`0x3bb25e47ada8527c264c582f7763b6e5c2a8e2a6`](https://sepolia.etherscan.io/address/0x3bb25e47ada8527c264c582f7763b6e5c2a8e2a6) |
 | **PoolRegistry** | [`0xf995fb0554d39fde02868470bfd2e2e2e9a043e1`](https://sepolia.etherscan.io/address/0xf995fb0554d39fde02868470bfd2e2e2e9a043e1) |
