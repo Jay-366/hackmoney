@@ -120,6 +120,7 @@ export default function PoolsPage() {
                                     <th className="p-4 font-medium">Token 1</th>
                                     <th className="p-4 font-medium">Fee</th>
                                     <th className="p-4 font-medium">Tick Spacing</th>
+                                    <th className="p-4 font-medium">Hook</th>
                                     <th className="p-4 font-medium">Action</th>
                                 </tr>
                             </thead>
@@ -130,6 +131,9 @@ export default function PoolsPage() {
                                         <td className="p-4 font-mono">{pool.currency1}</td>
                                         <td className="p-4">{pool.fee}</td>
                                         <td className="p-4">{pool.tickSpacing}</td>
+                                        <td className="p-4 font-mono text-xs text-zinc-500">
+                                            {pool.hooks === "0x0000000000000000000000000000000000000000" ? "None" : pool.hooks}
+                                        </td>
                                         <td className="p-4">
                                             <a
                                                 href={`/positions/create?poolId=${pool.id}`}

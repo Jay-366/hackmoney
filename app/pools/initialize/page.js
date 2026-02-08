@@ -22,7 +22,7 @@ export default function InitializePoolPage() {
     const [tokenB, setTokenB] = useState("");
     const [fee, setFee] = useState("3000"); // Pips
     const [tickSpacing, setTickSpacing] = useState("60");
-    const [startingPriceX96, setStartingPriceX96] = useState("79228162514264337593543950336"); // 1:1
+    const [startingPriceX96, setStartingPriceX96] = useState("79228162514264337593543"); // 1:1 in human terms (2^96 / 10^6 for 18 vs 6 decimals)
     const [hookAddress, setHookAddress] = useState(zeroAddress);
 
     const [status, setStatus] = useState("");
@@ -39,8 +39,8 @@ export default function InitializePoolPage() {
             setTokenA('0x0165878A594ca255338adfa4d48449f69242Eb8F');
             setTokenB('0xa513E6E4b8f2a923D98304ec87F64353C4D5C853');
         } else if (chainId === SEPOLIA_CHAIN_ID) {
-            setTokenA(NATIVE_TOKEN_TAG); // ETH default for A
-            setTokenB('0xe6ba97E2d85B1d0474AAbDd0969C0C4670377d0E');
+            setTokenA('0x209a45e3242a2985ba5701e07615b441ff2593c9'); // SepoliaETH (Mock)
+            setTokenB('0xaf6c3a632806ed83155f9f582d1c63ac31d1d435'); // MockUSDC
 
             // Set default hook
             const defaultHook = getPriceImpactHookAddress(chainId);
