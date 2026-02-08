@@ -168,7 +168,7 @@ function CreatePositionContent() {
             currency1: c1,
             fee: parseInt(fee),
             tickSpacing: parseInt(tickSpacing),
-            hooks: "0x0000000000000000000000000000000000000000"
+            hooks: "0x41B794D60e275D96ba393E301cB8b684604680C0"
         };
 
         try {
@@ -207,12 +207,23 @@ function CreatePositionContent() {
         }
 
         try {
-            // 1. Get Decimals and Parse
-            const dec0 = await getTokenDecimals(publicClient, c0, c0 === zeroAddress);
-            const dec1 = await getTokenDecimals(publicClient, c1, c1 === zeroAddress);
+            // 1. Get Decimals and Parse [FORCED REBUILD 2026-02-07 23:30]
+            let dec0 = await getTokenDecimals(publicClient, c0, c0 === zeroAddress);
+            let dec1 = await getTokenDecimals(publicClient, c1, c1 === zeroAddress);
+
+            // Force decimals for Known Mock Tokens (since getTokenDecimals might be failing in browser)
+            if (c0.toLowerCase() === "0x209A45E3242a2985bA5701e07615B441FF2593c9".toLowerCase()) dec0 = 18;
+            if (c0.toLowerCase() === "0xAf6C3A632806ED83155F9F582D1C63aC31d1d435".toLowerCase()) dec0 = 6;
+            if (c1.toLowerCase() === "0x209A45E3242a2985bA5701e07615B441FF2593c9".toLowerCase()) dec1 = 18;
+            if (c1.toLowerCase() === "0xAf6C3A632806ED83155F9F582D1C63aC31d1d435".toLowerCase()) dec1 = 6;
+
+            console.log(`Token0 Decimals: ${dec0}, Token1 Decimals: ${dec1}`);
+            console.log(`Input Values: Amount0=${val0}, Amount1=${val1}`);
 
             const parsed0 = parseUnits(val0, dec0);
             const parsed1 = parseUnits(val1, dec1);
+            console.log(`Parsed Amount0: ${parsed0.toString()} Wei`);
+            console.log(`Parsed Amount1: ${parsed1.toString()} Wei`);
 
             // Helper for slow networks (Sepolia)
             const wait = (hash) =>
@@ -273,12 +284,11 @@ function CreatePositionContent() {
             const tUpper = parseInt(tickUpper);
 
             // --- SDK Integration ---
+            // --- SDK Integration ---
             console.log("Creating SDK Token instances...");
-            const decimals0 = await getTokenDecimals(publicClient, c0, c0 === zeroAddress);
-            const decimals1 = await getTokenDecimals(publicClient, c1, c1 === zeroAddress);
-
-            const token0 = createToken(chainId, c0, decimals0, `Token0`, `T0`);
-            const token1 = createToken(chainId, c1, decimals1, `Token1`, `T1`);
+            // Reuse dec0/dec1 which are corrected above
+            const token0 = createToken(chainId, c0, dec0, `Token0`, `T0`);
+            const token1 = createToken(chainId, c1, dec1, `Token1`, `T1`);
 
             console.log("Creating SDK Pool instance...");
             const pool = await createPoolFromChain(
@@ -309,6 +319,10 @@ function CreatePositionContent() {
                 amount0: position.amount0.toSignificant(6),
                 amount1: position.amount1.toSignificant(6)
             });
+
+            if (position.liquidity.toString() === "0") {
+                throw new Error("Calculated liquidity is 0. Ensure you have provided amounts for both tokens if the range includes the current price, or check your tick range.");
+            }
 
             // Generate calldata using SDK
             const slippageTolerance = new Percent(slippageBps, 10000);

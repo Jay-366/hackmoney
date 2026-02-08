@@ -94,7 +94,7 @@ export function getUniversalRouterAddress(chainId: number): string | undefined {
 
 export function getPriceImpactHookAddress(chainId: number): string | undefined {
     if (chainId === SEPOLIA_CHAIN_ID) {
-        return "0x2106773d7577c3cEb4aE2aDAE7a1ff11C0F800c0";
+        return "0x8E5AA11AD9165E247a2c8C12d3a3f873BA4340c0";
     }
     return undefined;
 }

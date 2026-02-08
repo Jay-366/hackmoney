@@ -12,7 +12,6 @@ const RPC = process.env.SEPOLIA_RPC_URL!;
 // Key 1: Deployer (holds initial MockETH)
 let DEPLOYER_KEY = process.env.PRIVATE_KEY!;
 if (!DEPLOYER_KEY.startsWith("0x")) DEPLOYER_KEY = `0x${DEPLOYER_KEY}`;
-const zkkproof = '0x';
 
 // Key 2: Agent (User Provided Test Key)
 let AGENT_KEY = "dac64655d0b78804819c9a29c50038f49eba94619bd348eb3bd4676d2c3b712f";
@@ -43,11 +42,11 @@ const ERC20_ABI = [
     "function mint(address to, uint256 amount) external" // Only applies to MockUSDC
 ];
 
-const ETH = { address: "0x209A45E3242a2985bA5701e07615B441FF2593c9", decimals: 18 }; // MockETH
-const USDC = { address: "0xAf6C3A632806ED83155F9F582D1C63aC31d1d435", decimals: 6 }; // MockUSDC
-const HOOK = "0x41B794D60e275D96ba393E301cB8b684604680C0";
-const FEE = 5500; // 0.5%
-const TICK_SPACING = 66;
+const ETH = { address: "0x209a45e3242a2985ba5701e07615b441ff2593c9", decimals: 18 }; // MockETH
+const USDC = { address: "0xaf6c3a632806ed83155f9f582d1c63ac31d1d435", decimals: 6 }; // MockUSDC
+const HOOK = "0x87722c424B5d9C9b9D6113198b38D668C954C0C0";
+const FEE = 5000; // 0.5%
+const TICK_SPACING = 60;
 
 async function main() {
     console.log("Using RPC:", RPC);
@@ -59,33 +58,16 @@ async function main() {
     console.log("Deployer:", deployerWallet.address);
     console.log("Agent:", agentWallet.address);
 
-    const amountInWei = ethers.utils.parseUnits("500", 18).toString(); // 0.1 ETH - reasonable test amount
+    const amountInWei = ethers.utils.parseUnits("0.1", 18).toString(); // 0.1 ETH - reasonable test amount
 
     // --- Fund Agent with MockETH (from Deployer) ---
     const mockEthDeployer = new ethers.Contract(ETH.address, ERC20_ABI, deployerWallet);
     const mockEthAgent = new ethers.Contract(ETH.address, ERC20_ABI, agentWallet);
 
-    // Check Agent MockETH Balance & Native ETH Balance for Gas
+    // Check Agent MockETH Balance
     const agentBal = await mockEthAgent.balanceOf(agentWallet.address);
     console.log("Agent MockETH Balance:", ethers.utils.formatUnits(agentBal, 18));
 
-    // Check Native ETH for Gas
-    const agentEthBal = await agentWallet.getBalance();
-    const minEthRequired = ethers.utils.parseEther("0.05");
-    console.log("Agent Native ETH Balance:", ethers.utils.formatEther(agentEthBal));
-
-    if (agentEthBal.lt(minEthRequired)) {
-        console.log(`Agent Low on ETH (< 0.05). Funding from Deployer...`);
-        const fundingTx = await deployerWallet.sendTransaction({
-            to: agentWallet.address,
-            value: ethers.utils.parseEther("0.1")
-        });
-        console.log("Funding TX sent:", fundingTx.hash);
-        await fundingTx.wait();
-        console.log("Funded 0.1 ETH for Gas.");
-    }
-
-    // Also check MockETH
     if (agentBal.lt(amountInWei)) {
         console.log("Funding Agent with MockETH from Deployer...");
         const fundingTx = await mockEthDeployer.transfer(agentWallet.address, ethers.utils.parseEther("1")); // Send 1 MockETH
@@ -102,10 +84,11 @@ async function main() {
     // Here we swap MockETH -> MockUSDC.
 
     // --- Proceed to Swap ---
-    console.log("Setting up Swap...");
+    console.log("Setting up Retail Swap (Invalid Agent)...");
 
     // Use Empty Hook Data to avoid Agent-Logic related reverts for now
-    const hookData = encodeHookData({ agentId: 945n, proof: zkkproof });
+    const hookData = encodeHookData({ agentId: 123456n, proof: "0x" });
+    // const hookData = "0x";
 
     // Determine config
     const isEthToken0 = ETH.address.toLowerCase() < USDC.address.toLowerCase();
@@ -165,18 +148,14 @@ async function main() {
     const receipt = await tx.wait();
     console.log("Confirmed! Transaction Hash:", tx.hash);
     console.log("Block Number:", receipt.blockNumber);
-    console.log("⛽ Gas Used:", receipt.gasUsed.toString());
+    console.log("⛽ Gas Used (Retail):", receipt.gasUsed.toString());
 
     // Check USDC Balance After
     const usdcBalAfter = await mockUsdc.balanceOf(agentWallet.address);
     const received = usdcBalAfter.sub(usdcBalBefore);
-    console.log("💰 USDC Received:", ethers.utils.formatUnits(received, 6));
+    console.log("💰 USDC Received (Retail):", ethers.utils.formatUnits(received, 6));
+    console.log("   (Input: 0.1 ETH)");
 
-
-    // Calculate Swap ID similar to hook logic to help user
-    // keccak256(abi.encodePacked(poolId, sender, agentId, block.number, nonce))
-    // fetching nonce is hard from here without querying hook...
-    // simpler: just tell user to look at logs or run the verification script which can find the event.
     // Parse logs for SwapRecorded
     const HOOK_ABI = [
         "event SwapRecorded(bytes32 indexed swapId, bytes32 indexed poolId, address indexed sender, uint256 agentId, uint160 sqrtPriceBeforeX96, uint160 sqrtPriceAfterX96, uint24 feeBps, uint256 Rnow)"
@@ -189,18 +168,12 @@ async function main() {
                 const parsed = hookInterface.parseLog(log);
                 if (parsed.name === "SwapRecorded") {
                     console.log("✅ SwapRecorded Event Found!");
-                    console.log("   Sender:", parsed.args.sender);
-                    console.log("   AgentId:", parsed.args.agentId.toString());
                     console.log("   Fee Bps:", parsed.args.feeBps.toString());
                     console.log("   Rnow:", ethers.utils.formatUnits(parsed.args.Rnow, 18));
                 }
             } catch (e) { }
         }
     }
-
-    console.log("\n📝 To verify slashing evidence:");
-    console.log("1. Wait 10 blocks");
-    console.log("2. Run: bun scripts/verifyMarkout.ts " + tx.hash);
 }
 
 main().catch((e) => {

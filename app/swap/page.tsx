@@ -34,8 +34,14 @@ import {
 } from "@/lib/uniswapV4Addresses";
 import { sortTokens } from "@/lib/sortTokens";
 
+// ====== Fixed pool config (your pool) ======
+const ETH = { address: "0x209a45e3242a2985ba5701e07615b441ff2593c9", decimals: 18 };
+const USDC = { address: "0xaf6c3a632806ed83155f9f582d1c63ac31d1d435", decimals: 6 };
+const HOOK = "0x8E5AA11AD9165E247a2c8C12d3a3f873BA4340c0";
+const FEE = 3000;
+const TICK_SPACING = 6;
+
 const NATIVE = "NATIVE";
-const ZERO_HOOKS = "0x0000000000000000000000000000000000000000";
 
 // Permit2 approve limits
 const MAX_UINT160 = (1n << 160n) - 1n;
@@ -48,6 +54,7 @@ function computePoolId(
     tickSpacing: number,
     hooks: `0x${string}`
 ) {
+    // Note: this matches your PoolRegistry.computePoolId style (abi.encode + keccak256)
     const encoded = encodeAbiParameters(
         [
             { name: "currency0", type: "address" },
@@ -73,7 +80,7 @@ export default function SwapPage() {
         <div className="flex min-h-screen flex-col items-center bg-zinc-50 dark:bg-black font-sans">
             <header className="w-full max-w-5xl flex justify-between items-center py-6 px-8">
                 <h1 className="text-3xl font-bold text-black dark:text-zinc-50">
-                    V4 Swap (No Hooks Pool)
+                    V4 Swap (Hooked Pool)
                 </h1>
                 <ConnectButton />
             </header>
@@ -92,15 +99,11 @@ function SwapContent() {
     const { sendTransactionAsync } = useSendTransaction();
     const { writeContractAsync } = useWriteContract();
 
-    // ====== Your pool defaults (from you) ======
-    const [tokenIn, setTokenIn] = useState<string>(
-        "0x6f8020Bd22913F46fe60d6A3330A4B4E7fB13aEB"
-    );
-    const [tokenOut, setTokenOut] = useState<string>(
-        "0x6F89Cd685215188050e05d57456c16d0c9EdD354"
-    );
-    const [fee, setFee] = useState<string>("3000");
-    const [tickSpacing, setTickSpacing] = useState<string>("60");
+    // ====== Defaults: fixed ETH/USDC pool you provided ======
+    const [tokenIn, setTokenIn] = useState<string>(ETH.address);
+    const [tokenOut, setTokenOut] = useState<string>(USDC.address);
+    const [fee, setFee] = useState<string>(String(FEE));
+    const [tickSpacing, setTickSpacing] = useState<string>(String(TICK_SPACING));
 
     // Amounts
     const [amountIn, setAmountIn] = useState<string>("0.01");
@@ -110,8 +113,8 @@ function SwapContent() {
     const [deadlineMinutes, setDeadlineMinutes] = useState<string>("20");
 
     // derived decimals
-    const [decimalsIn, setDecimalsIn] = useState<number>(18);
-    const [decimalsOut, setDecimalsOut] = useState<number>(18);
+    const [decimalsIn, setDecimalsIn] = useState<number>(ETH.decimals);
+    const [decimalsOut, setDecimalsOut] = useState<number>(USDC.decimals);
 
     // quotes
     const [quotedOut, setQuotedOut] = useState<bigint | null>(null);
@@ -151,19 +154,23 @@ function SwapContent() {
         tickSpacing,
     ]);
 
-    // fetch decimals
+    // fetch decimals (kept for safety if user changes token addresses)
     useEffect(() => {
         (async () => {
             if (!publicClient) return;
             try {
                 if (isNativeIn) setDecimalsIn(18);
                 else if (isAddress(currencyIn)) {
-                    setDecimalsIn(await getTokenDecimals(publicClient, currencyIn, false));
+                    try {
+                        setDecimalsIn(await getTokenDecimals(publicClient, currencyIn, false));
+                    } catch { setDecimalsIn(18); }
                 }
 
                 if (isNativeOut) setDecimalsOut(18);
                 else if (isAddress(currencyOut)) {
-                    setDecimalsOut(await getTokenDecimals(publicClient, currencyOut, false));
+                    try {
+                        setDecimalsOut(await getTokenDecimals(publicClient, currencyOut, false));
+                    } catch { setDecimalsOut(18); }
                 }
             } catch {
                 // ignore
@@ -171,7 +178,7 @@ function SwapContent() {
         })();
     }, [publicClient, isNativeIn, isNativeOut, currencyIn, currencyOut]);
 
-    // auto quote (spot)
+    // auto quote (spot) using slot0 sqrtPriceX96
     useEffect(() => {
         let alive = true;
 
@@ -195,7 +202,7 @@ function SwapContent() {
                     sorted[1] as `0x${string}`,
                     feeU24,
                     tick,
-                    ZERO_HOOKS
+                    HOOK as `0x${string}`
                 );
 
                 // getSlot0(poolId)
@@ -207,6 +214,13 @@ function SwapContent() {
                 });
 
                 const sqrtPriceX96 = slot0[0] as bigint;
+                if (sqrtPriceX96 === 0n) {
+                    if (!alive) return;
+                    setQuotedOut(null);
+                    setMinOut(null);
+                    return;
+                }
+
                 const price1Per0_1e18 = sqrtPriceX96ToPrice1Per0_1e18(sqrtPriceX96);
 
                 const amtIn = parseUnits(amountIn, decimalsIn);
@@ -216,12 +230,15 @@ function SwapContent() {
                 if (zeroForOne) {
                     outRaw = (amtIn * price1Per0_1e18) / 10n ** 18n;
                 } else {
-                    outRaw = (amtIn * 10n ** 18n) / (price1Per0_1e18 === 0n ? 1n : price1Per0_1e18);
+                    outRaw =
+                        (amtIn * 10n ** 18n) /
+                        (price1Per0_1e18 === 0n ? 1n : price1Per0_1e18);
                 }
 
-                // approximate fee deduction (bps)
-                const feeBps = BigInt(feeU24);
-                const effectiveOut = (outRaw * (10_000n - feeBps)) / 10_000n;
+                // Approx fee deduction (NOTE: fee=3000 is NOT bps; this is only a rough UI estimate)
+                // Keeping your existing behavior but this is just "spot estimate".
+                const feeBpsApprox = BigInt(feeU24); // rough
+                const effectiveOut = (outRaw * (10_000n - feeBpsApprox)) / 10_000n;
 
                 const slip = BigInt(slippageBps || "0");
                 const minOutRaw = (effectiveOut * (10_000n - slip)) / 10_000n;
@@ -229,7 +246,7 @@ function SwapContent() {
                 if (!alive) return;
                 setQuotedOut(effectiveOut);
                 setMinOut(minOutRaw);
-            } catch (e) {
+            } catch {
                 if (!alive) return;
                 setQuotedOut(null);
                 setMinOut(null);
@@ -239,7 +256,18 @@ function SwapContent() {
         return () => {
             alive = false;
         };
-    }, [canQuote, amountIn, decimalsIn, fee, tickSpacing, slippageBps, currencyIn, currencyOut, poolManager, publicClient]);
+    }, [
+        canQuote,
+        amountIn,
+        decimalsIn,
+        fee,
+        tickSpacing,
+        slippageBps,
+        currencyIn,
+        currencyOut,
+        poolManager,
+        publicClient,
+    ]);
 
     async function handleSwap() {
         try {
@@ -288,7 +316,12 @@ function SwapContent() {
                     address: permit2 as `0x${string}`,
                     abi: PERMIT2_ABI,
                     functionName: "approve",
-                    args: [currencyIn as `0x${string}`, router as `0x${string}`, MAX_UINT160, Number(MAX_UINT48)],
+                    args: [
+                        currencyIn as `0x${string}`,
+                        router as `0x${string}`,
+                        MAX_UINT160,
+                        Number(MAX_UINT48),
+                    ],
                 });
             }
 
@@ -300,26 +333,30 @@ function SwapContent() {
             const routePlanner = new RoutePlanner();
             const v4Planner = new V4Planner();
 
-            // Correct object-based config for v4 SDK
+            // Hooked pool config
             const swapConfig = {
                 poolKey: {
                     currency0: sorted[0],
                     currency1: sorted[1],
                     fee: feeU24,
                     tickSpacing: tick,
-                    hooks: ZERO_HOOKS,
+                    hooks: HOOK as `0x${string}`,
                 },
                 zeroForOne,
                 amountIn: amtIn.toString(),
                 amountOutMinimum: amtOutMin.toString(),
+                // If your hook requires structured data, change this.
                 hookData: "0x",
             };
 
+            // Plan v4 actions
             v4Planner.addAction(Actions.SWAP_EXACT_IN_SINGLE, [swapConfig]);
             v4Planner.addAction(Actions.SETTLE_ALL, [swapConfig.poolKey.currency0, swapConfig.amountIn]);
             v4Planner.addAction(Actions.TAKE_ALL, [swapConfig.poolKey.currency1, swapConfig.amountOutMinimum]);
 
             const encodedActions = v4Planner.finalize();
+
+            // Route command
             routePlanner.addCommand(CommandType.V4_SWAP, [v4Planner.actions, v4Planner.params]);
 
             const deadline = BigInt(Math.floor(Date.now() / 1000) + Number(deadlineMinutes) * 60);
@@ -327,7 +364,11 @@ function SwapContent() {
             const data = encodeFunctionData({
                 abi: UNIVERSAL_ROUTER_ABI,
                 functionName: "execute",
-                args: [routePlanner.commands as `0x${string}`, [encodedActions] as `0x${string}`[], deadline],
+                args: [
+                    routePlanner.commands as `0x${string}`,
+                    [encodedActions] as `0x${string}`[],
+                    deadline,
+                ],
             });
 
             setStatus("Simulating...");
@@ -365,6 +406,11 @@ function SwapContent() {
     return (
         <div className="flex flex-col gap-4">
             <div className="p-4 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-4">
+                <div className="text-xs text-zinc-500 font-mono">
+                    <div>Hook: {HOOK}</div>
+                    <div>Fee: {fee} | TickSpacing: {tickSpacing}</div>
+                </div>
+
                 <div>
                     <label className="block text-sm font-medium mb-1 dark:text-zinc-300">Token In</label>
                     <input
@@ -413,7 +459,7 @@ function SwapContent() {
             </div>
 
             <div className="p-4 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-2">
-                <h3 className="font-medium dark:text-zinc-200">Pool Settings (No Hooks)</h3>
+                <h3 className="font-medium dark:text-zinc-200">Pool Settings (Hooked)</h3>
 
                 <div className="grid grid-cols-2 gap-2">
                     <input
@@ -425,7 +471,7 @@ function SwapContent() {
                     />
                     <input
                         type="text"
-                        placeholder="Tick Spacing (e.g. 60)"
+                        placeholder="Tick Spacing (e.g. 6)"
                         value={tickSpacing}
                         onChange={(e) => setTickSpacing(e.target.value)}
                         className="p-2 rounded bg-zinc-100 dark:bg-zinc-800 dark:text-white"
@@ -450,7 +496,7 @@ function SwapContent() {
                 </div>
 
                 <div className="text-xs text-zinc-500">
-                    Hooks are fixed to 0x0 in this page.
+                    Hooks are fixed to <span className="font-mono">{HOOK}</span> in this page (edit hookData if your hook requires it).
                 </div>
             </div>
 

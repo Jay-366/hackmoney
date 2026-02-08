@@ -1,41 +1,55 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 import {BaseHook} from "../lib/v4-periphery/src/utils/BaseHook.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
 
+import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {BeforeSwapDelta} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
+import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
 import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import {LPFeeLibrary} from "@uniswap/v4-core/src/libraries/LPFeeLibrary.sol";
 import {SwapParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
+import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
 
-/// Optional registry you’ll plug later (sender binding + bond).
-interface IAgentRegistry {
-    function agentController(uint256 agentId) external view returns (address);
-    function agentBonds(uint256 agentId) external view returns (uint256);
+// --------------------
+// Interfaces
+// --------------------
+interface IAminoReputationRegistry {
+    function identityRegistry() external view returns (IIdentityRegistry);
+    function getSummary(uint256 agentId) external view returns (int128 score, uint256 bond);
+    function slash(uint256 agentId, uint256 amount, string calldata reason) external;
+}
+
+interface IIdentityRegistry {
+    function ownerOf(uint256 agentId) external view returns (address);
 }
 
 contract AminoRiskFeeHook is BaseHook {
+    using PoolIdLibrary for PoolKey;
+    using StateLibrary for IPoolManager;
     // --------------------
     // Config
     // --------------------
     address public owner;
-    IAgentRegistry public registry; // set later
+    IAminoReputationRegistry public registry; // set later
+    address public constant UR = 0x3A9D48AB9751398BbFa63ad67599Bb04e4BdF98b;
 
     uint256 public constant MIN_BOND_WEI = 0.05 ether;
 
-    // Fee tiers (bps)
-    uint24 public constant FEE_PARTNER = 5;    // 0.05%
-    uint24 public constant FEE_RETAIL  = 30;   // 0.30%
-    uint24 public constant FEE_ELEV    = 60;   // 0.60%
-    uint24 public constant FEE_TOXIC   = 150;  // 1.50%
+    // Fee tiers (in Uniswap V4 units: hundredths of basis points)
+    // 1 bps = 100 units, so 0.05% = 5 bps = 500 units
+    uint24 public constant FEE_PARTNER = 500;  // 0.05% (5 bps)
+    uint24 public constant FEE_RETAIL = 3000;  // 0.30% (30 bps)
+    uint24 public constant FEE_ELEV = 6000;    // 0.60% (60 bps)
+    uint24 public constant FEE_TOXIC = 15000;  // 1.50% (150 bps)
 
     // Risk thresholds
     // R in [0, 1e18] (1e18 == 1.0)
     uint256 public constant R_PARTNER_MAX = 1e17; // 0.1
-    uint256 public constant R_RETAIL_MAX  = 3e17; // 0.3
-    uint256 public constant R_ELEV_MAX    = 7e17; // 0.7
+    uint256 public constant R_RETAIL_MAX = 3e17; // 0.3
+    uint256 public constant R_ELEV_MAX = 7e17; // 0.7
 
     // Weights for combining metrics (tunable)
     // R_now = wI*I + wS*S  (ρ handled later)
@@ -49,22 +63,21 @@ contract AminoRiskFeeHook is BaseHook {
     // Storage for markout
     // --------------------
     struct SwapRecord {
-        bytes32 poolId;
+        PoolId poolId;
         address sender;
         uint256 agentId;
         uint256 blockNumber;
         uint160 sqrtPriceBeforeX96;
         uint160 sqrtPriceAfterX96;
-        // you can store more later (amountIn, etc.)
     }
 
     mapping(bytes32 => SwapRecord) public swaps;
-    mapping(bytes32 => uint256) public poolNonces;
+    mapping(PoolId => uint256) public poolNonces;
 
     event RegistrySet(address indexed registry);
     event SwapRecorded(
         bytes32 indexed swapId,
-        bytes32 indexed poolId,
+        PoolId indexed poolId,
         address indexed sender,
         uint256 agentId,
         uint160 sqrtPriceBeforeX96,
@@ -72,10 +85,7 @@ contract AminoRiskFeeHook is BaseHook {
         uint24 feeBps,
         uint256 Rnow
     );
-    event MarkoutChecked(
-        bytes32 indexed swapId,
-        uint256 rho1e18
-    );
+    event MarkoutChecked(bytes32 indexed swapId, uint256 rho1e18);
 
     error NotOwner();
     modifier onlyOwner() {
@@ -83,16 +93,21 @@ contract AminoRiskFeeHook is BaseHook {
         _;
     }
 
-    constructor(IPoolManager _poolManager) BaseHook(_poolManager) {
-        owner = msg.sender;
+    constructor(IPoolManager _poolManager, address _owner) BaseHook(_poolManager) {
+        owner = _owner;
     }
 
     function setRegistry(address _registry) external onlyOwner {
-        registry = IAgentRegistry(_registry);
+        registry = IAminoReputationRegistry(_registry);
         emit RegistrySet(_registry);
     }
 
-    function getHookPermissions() public pure override returns (Hooks.Permissions memory p) {
+    function getHookPermissions()
+        public
+        pure
+        override
+        returns (Hooks.Permissions memory p)
+    {
         p.beforeSwap = true;
         p.afterSwap = true;
         // markout is not a hook callback; it’s a public function on this hook.
@@ -106,21 +121,21 @@ contract AminoRiskFeeHook is BaseHook {
         PoolKey calldata key,
         SwapParams calldata params,
         bytes calldata hookData
-    )
-        internal
-        override
-        returns (bytes4, BeforeSwapDelta, uint24)
-    {
+    ) internal override returns (bytes4, BeforeSwapDelta, uint24) {
         // Decode agentId + proof (proof ignored now)
         uint256 agentId = 0;
         if (hookData.length > 0) {
             (agentId, ) = abi.decode(hookData, (uint256, bytes));
         }
 
-        bytes32 poolId = keccak256(abi.encode(key));
+        PoolId poolId = key.toId();
 
         // Read current pool state
-        (uint160 sqrtPriceBeforeX96,,,) = _getSlot0(poolId);
+        (uint160 sqrtPriceBeforeX96, , , ) = _getSlot0(poolId);
+
+        uint256 nextNonce = poolNonces[poolId] + 1;
+        _tempBefore[poolId][nextNonce] = sqrtPriceBeforeX96;
+        poolNonces[poolId] = nextNonce;
 
         // Estimate metrics using pre-swap info
         uint256 I1e18 = _estimatePriceImpact1e18(sqrtPriceBeforeX96, params);
@@ -133,11 +148,15 @@ contract AminoRiskFeeHook is BaseHook {
         // Determine “Partner” eligibility (bonded + sender-binding)
         bool partnerEligible = false;
         if (address(registry) != address(0) && agentId != 0) {
-            address controller = registry.agentController(agentId);
-            uint256 bond = registry.agentBonds(agentId);
-            if (controller == sender && bond >= MIN_BOND_WEI) {
-                partnerEligible = true;
-            }
+            try registry.getSummary(agentId) returns (int128, uint256 bond) {
+                if (bond >= MIN_BOND_WEI) {
+                    try registry.identityRegistry().ownerOf(agentId) returns (address controller) {
+                        if (controller == sender || sender == UR) {
+                            partnerEligible = true;
+                        }
+                    } catch {}
+                }
+            } catch {}
         }
 
         // Fee tiering
@@ -151,16 +170,18 @@ contract AminoRiskFeeHook is BaseHook {
         } else {
             feeBps = FEE_TOXIC;
         }
+        
+        // Store for event emission
+        _tempData[poolId][nextNonce] = SwapTemp({feeBps: feeBps, Rnow: Rnow});
 
-        // Generate swapId now (so we can store record in afterSwap)
-        // Store temporarily in memory via event only is not enough; we store in afterSwap.
-        // We’ll regenerate the same swapId in afterSwap using the same nonce logic:
-        // (poolId, sender, agentId, block.number, nonce)
-        // To do that, we increment nonce here.
-        poolNonces[poolId]++;
-
-        // No balance delta changes, only fee override
-        return (this.beforeSwap.selector, BeforeSwapDelta.wrap(0), feeBps);
+        // Apply dynamic fee override with OVERRIDE_FEE_FLAG
+        uint24 lpFeeOverride = feeBps | LPFeeLibrary.OVERRIDE_FEE_FLAG;
+        
+        return (
+            BaseHook.beforeSwap.selector,
+            BeforeSwapDeltaLibrary.ZERO_DELTA,
+            lpFeeOverride
+        );
     }
 
     // ============================================================
@@ -172,31 +193,26 @@ contract AminoRiskFeeHook is BaseHook {
         SwapParams calldata /*params*/,
         BalanceDelta /*delta*/,
         bytes calldata hookData
-    )
-        internal
-        override
-        returns (bytes4, int128)
-    {
+    ) internal override returns (bytes4, int128) {
         uint256 agentId = 0;
         if (hookData.length > 0) {
             (agentId, ) = abi.decode(hookData, (uint256, bytes));
         }
 
-        bytes32 poolId = keccak256(abi.encode(key));
+        PoolId poolId = key.toId();
 
         // nonce used for swapId = current nonce (after increment in beforeSwap)
         uint256 nonce = poolNonces[poolId];
 
         // Read prices
-        (uint160 sqrtPriceAfterX96,,,) = _getSlot0(poolId);
+        (uint160 sqrtPriceAfterX96, , , ) = _getSlot0(poolId);
 
-        // We don’t have sqrtPriceBefore here unless we re-read it earlier.
-        // For now, we store "before" as "after" for safety if missed.
-        // Better: also record sqrtPriceBefore in beforeSwap into a temp mapping keyed by (poolId, nonce).
-        // We'll do that with temp mapping:
+        // Retrieve stored "before" price
         uint160 sqrtPriceBeforeX96 = _tempBefore[poolId][nonce];
 
-        bytes32 swapId = keccak256(abi.encodePacked(poolId, sender, agentId, block.number, nonce));
+        bytes32 swapId = keccak256(
+            abi.encodePacked(poolId, sender, agentId, block.number, nonce)
+        );
 
         swaps[swapId] = SwapRecord({
             poolId: poolId,
@@ -207,6 +223,9 @@ contract AminoRiskFeeHook is BaseHook {
             sqrtPriceAfterX96: sqrtPriceAfterX96
         });
 
+        SwapTemp memory t = _tempData[poolId][nonce];
+        delete _tempData[poolId][nonce]; // clear transient data
+
         emit SwapRecorded(
             swapId,
             poolId,
@@ -214,11 +233,11 @@ contract AminoRiskFeeHook is BaseHook {
             agentId,
             sqrtPriceBeforeX96,
             sqrtPriceAfterX96,
-            0, // feeBps not passed here; you can emit it via temp mapping too if you want
-            0  // Rnow not passed here; you can emit it via temp mapping too
+            t.feeBps,
+            t.Rnow
         );
 
-        return (this.afterSwap.selector, 0);
+        return (BaseHook.afterSwap.selector, 0);
     }
 
     // ============================================================
@@ -227,68 +246,64 @@ contract AminoRiskFeeHook is BaseHook {
     function verifyMarkout(bytes32 swapId) external returns (uint256 rho1e18) {
         SwapRecord memory r = swaps[swapId];
         require(r.blockNumber != 0, "UNKNOWN_SWAP");
-        require(block.number >= r.blockNumber + MARKOUT_DELAY_BLOCKS, "TOO_EARLY");
+        require(
+            block.number >= r.blockNumber + MARKOUT_DELAY_BLOCKS,
+            "TOO_EARLY"
+        );
 
-        (uint160 sqrtNowX96,,,) = _getSlot0(r.poolId);
+        (uint160 sqrtNowX96, , , ) = _getSlot0(r.poolId);
 
         // ρ = |P_{t+10} - P_t| / |P_t - P_before|
-        // We use sqrtPrice as a proxy for price to keep it cheap; ratio still meaningful.
         uint256 num = _absDiff(r.sqrtPriceAfterX96, sqrtNowX96);
         uint256 den = _absDiff(r.sqrtPriceBeforeX96, r.sqrtPriceAfterX96);
-        if (den == 0) return 1e18; // no movement -> treat as fully reversible
-
+        if (den == 0) return 1e18; // no movement
+        
         rho1e18 = (num * 1e18) / den;
         if (rho1e18 > 1e18) rho1e18 = 1e18;
 
         emit MarkoutChecked(swapId, rho1e18);
 
-        // Later: use rho to slash/update score in registry
-        // e.g. if rho < 0.2e18 => toxic -> slash( agentId, ... )
+        // Only slash if registry is set
+        if (
+            rho1e18 < 2e17 && address(registry) != address(0) && r.agentId != 0
+        ) {
+            registry.slash(r.agentId, 0.01 ether, "toxic flow detected");
+        }
     }
 
     // ============================================================
     // Temp storage to capture before price per (poolId, nonce)
     // ============================================================
-    mapping(bytes32 => mapping(uint256 => uint160)) internal _tempBefore;
-
-    // We must capture sqrtPriceBefore inside beforeSwap, so add this helper:
-    // Call this at the start of beforeSwap after reading slot0:
-    // _tempBefore[poolId][poolNonces[poolId]+1] = sqrtPriceBeforeX96;
-    //
-    // To keep code simple above, implement as internal used by beforeSwap:
-    function _captureBefore(bytes32 poolId, uint256 nextNonce, uint160 sqrtPriceBeforeX96) internal {
-        _tempBefore[poolId][nextNonce] = sqrtPriceBeforeX96;
+    // ============================================================
+    // Temp storage
+    // ============================================================
+    struct SwapTemp {
+        uint24 feeBps;
+        uint256 Rnow;
     }
+    mapping(PoolId => mapping(uint256 => uint160)) internal _tempBefore;
+    mapping(PoolId => mapping(uint256 => SwapTemp)) internal _tempData;
 
     // ============================================================
     // Metric estimation (MVP approximations)
     // ============================================================
 
-    /// Price impact estimate in [0,1e18].
-    /// MVP: uses a rough proxy from amountSpecified magnitude.
-    /// Replace later with real simulation (SwapMath) if you want higher fidelity.
     function _estimatePriceImpact1e18(
         uint160 /*sqrtPriceBeforeX96*/,
         SwapParams calldata params
     ) internal pure returns (uint256) {
-        // params.amountSpecified is int256, negative means exact output in some flows.
-        // For MVP, use abs(amount) scaled into a tiny value; you should replace this later.
         uint256 amt = params.amountSpecified < 0
             ? uint256(-params.amountSpecified)
             : uint256(params.amountSpecified);
 
-        // Simple saturating curve: impact ~ amt / (amt + K)
-        // Choose K large so typical trades are low impact.
         uint256 K = 1e20;
         uint256 impact = (amt * 1e18) / (amt + K);
         if (impact > 1e18) impact = 1e18;
         return impact;
     }
 
-    /// Liquidity stress S = Δx / L_active.
-    /// MVP: uses pool liquidity from PoolManager if available; otherwise returns 0.
     function _estimateLiquidityStress1e18(
-        bytes32 poolId,
+        PoolId poolId,
         SwapParams calldata params
     ) internal view returns (uint256) {
         uint128 L = _getLiquidity(poolId);
@@ -298,8 +313,6 @@ contract AminoRiskFeeHook is BaseHook {
             ? uint256(-params.amountSpecified)
             : uint256(params.amountSpecified);
 
-        // scale: dx / L
-        // Note: units don’t match perfectly; for MVP it behaves as a stress proxy.
         uint256 stress = (dx * 1e18) / uint256(L);
         if (stress > 1e18) stress = 1e18;
         return stress;
@@ -309,22 +322,23 @@ contract AminoRiskFeeHook is BaseHook {
     // PoolManager state reads (low-level)
     // ============================================================
 
-    function _getSlot0(bytes32 poolId) internal view returns (uint160 sqrtPriceX96, int24 tick, uint16 obsCard, uint8 feeProtocol) {
-        // selector: getSlot0(bytes32)
-        (bool ok, bytes memory data) = address(poolManager).staticcall(
-            abi.encodeWithSignature("getSlot0(bytes32)", poolId)
-        );
-        require(ok && data.length >= 32, "SLOT0_UNAVAILABLE");
-        (sqrtPriceX96, tick, obsCard, feeProtocol) = abi.decode(data, (uint160, int24, uint16, uint8));
+    function _getSlot0(
+        PoolId poolId
+    )
+        internal
+        view
+        returns (
+            uint160 sqrtPriceX96,
+            int24 tick,
+            uint24 protocolFee,
+            uint24 lpFee
+        )
+    {
+        return poolManager.getSlot0(poolId);
     }
 
-    function _getLiquidity(bytes32 poolId) internal view returns (uint128 L) {
-        // selector: getLiquidity(bytes32)
-        (bool ok, bytes memory data) = address(poolManager).staticcall(
-            abi.encodeWithSignature("getLiquidity(bytes32)", poolId)
-        );
-        if (!ok || data.length < 32) return 0;
-        (L) = abi.decode(data, (uint128));
+    function _getLiquidity(PoolId poolId) internal view returns (uint128 L) {
+        return poolManager.getLiquidity(poolId);
     }
 
     // ============================================================

@@ -4,7 +4,9 @@ pragma solidity ^0.8.26;
 contract MockUSDC {
     string public name = "USD Coin";
     string public symbol = "USDC";
-    uint8 public constant decimals = 6;
+    function decimals() external pure returns (uint8) {
+        return 6;
+    }
 
     uint256 public totalSupply;
 
