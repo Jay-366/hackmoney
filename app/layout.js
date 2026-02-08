@@ -28,7 +28,7 @@ export default function RootLayout({ children }) {
         className={`${playfair.variable} ${inter.variable} ${geistMono.variable} antialiased`}
       >
         <div className="fixed top-8 left-8 z-50 font-serif font-bold text-xl tracking-tight text-white/90 pointer-events-none select-none">
-          AMINOHOOKS
+          AMINO HOOKS
         </div>
         {children}
       </body>
