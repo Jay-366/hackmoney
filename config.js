@@ -9,7 +9,6 @@ import {
     polygon,
     sepolia,
     baseSepolia,
-    anvil,
 } from 'wagmi/chains';
 
 export const config = getDefaultConfig({
@@ -23,7 +22,6 @@ export const config = getDefaultConfig({
         base,
         sepolia,
         baseSepolia,
-        anvil,
     ],
     ssr: true,
 });
