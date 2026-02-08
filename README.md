@@ -1,4 +1,4 @@
-# AMINOHOOKS using Uniswap v4
+# AMINOHOOKS 
 
 ![Status](https://img.shields.io/badge/Status-Development-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
